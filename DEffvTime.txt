@@ -1,0 +1,61 @@
+Recording all chambers with a delta_eff > 10% 
+
+Time Period: 19/7/2056 to 19/7/2056.
+
+Chamber ME-32-10 experienced a -13.152% change in LCT efficiency.
+Chamber ME-32-10 experienced a -13.4962% change in segment efficiency.
+Chamber ME-12-8 experienced a -35.9734% change in segment efficiency.
+Chamber ME-12-18 experienced a -11.1509% change in segment efficiency.
+Chamber ME-12-22 experienced a -37.2759% change in LCT efficiency.
+Chamber ME-12-22 experienced a -35.1309% change in segment efficiency.
+Chamber ME-12-28 experienced a -11.2572% change in LCT efficiency.
+Chamber ME-12-34 experienced a -13.1007% change in LCT efficiency.
+Chamber ME-11B-3 experienced a 24.0928% change in segment efficiency.
+Chamber ME-11B-8 experienced a 58.2523% change in LCT efficiency.
+Chamber ME-11B-8 experienced a 93.4599% change in segment efficiency.
+Chamber ME-11B-17 experienced a -10.7913% change in segment efficiency.
+Chamber ME-11B-19 experienced a -22.4797% change in segment efficiency.
+Chamber ME-11B-29 experienced a -10.2724% change in segment efficiency.
+Chamber ME+11A-3 experienced a -21.5222% change in LCT efficiency.
+Chamber ME+11A-3 experienced a -24.3531% change in segment efficiency.
+Chamber ME+11B-3 experienced a -26.9181% change in LCT efficiency.
+Chamber ME+11B-3 experienced a -27.3389% change in segment efficiency.
+Chamber ME+11B-7 experienced a 16.2831% change in segment efficiency.
+Chamber ME+11B-29 experienced a 15.713% change in segment efficiency.
+Chamber ME+11B-31 experienced a 13.7467% change in LCT efficiency.
+Chamber ME+11B-31 experienced a 11.7182% change in segment efficiency.
+Chamber ME+11B-35 experienced a 11.226% change in LCT efficiency.
+Chamber ME+12-28 experienced a 10.2774% change in segment efficiency.
+Time Period: 24/7/2056 to 24/7/2056.
+
+Chamber ME-42-26 experienced a -10.2868% change in segment efficiency.
+Chamber ME-42-36 experienced a 21.263% change in LCT efficiency.
+Chamber ME-42-36 experienced a 22.1843% change in segment efficiency.
+Chamber ME-32-10 experienced a 15.8484% change in LCT efficiency.
+Chamber ME-32-10 experienced a 15.0548% change in segment efficiency.
+Chamber ME-22-1 experienced a 25.7791% change in LCT efficiency.
+Chamber ME-22-1 experienced a 23.4502% change in segment efficiency.
+Chamber ME-22-15 experienced a 11.4006% change in LCT efficiency.
+Chamber ME-22-15 experienced a 12.1921% change in segment efficiency.
+Chamber ME-13-32 experienced a -31.5058% change in LCT efficiency.
+Chamber ME-13-32 experienced a -32.7287% change in segment efficiency.
+Chamber ME-12-8 experienced a 35.6982% change in segment efficiency.
+Chamber ME-12-18 experienced a 10.2048% change in segment efficiency.
+Chamber ME-12-22 experienced a 39.342% change in LCT efficiency.
+Chamber ME-12-22 experienced a 36.4174% change in segment efficiency.
+Chamber ME-12-28 experienced a 11.2591% change in LCT efficiency.
+Chamber ME-12-34 experienced a 13.8406% change in LCT efficiency.
+Chamber ME-12-36 experienced a 11.0843% change in LCT efficiency.
+Chamber ME-11B-5 experienced a -23.5415% change in LCT efficiency.
+Chamber ME-11B-17 experienced a 10.2134% change in segment efficiency.
+Chamber ME-11B-19 experienced a 21.7039% change in segment efficiency.
+Chamber ME-11A-23 experienced a 11.1099% change in LCT efficiency.
+Chamber ME+11A-3 experienced a 20.8649% change in LCT efficiency.
+Chamber ME+11A-3 experienced a 22.8539% change in segment efficiency.
+Chamber ME+11B-3 experienced a 26.7082% change in LCT efficiency.
+Chamber ME+11B-3 experienced a 27.3694% change in segment efficiency.
+Chamber ME+12-5 experienced a -12.8438% change in LCT efficiency.
+Chamber ME+12-20 experienced a 37.601% change in LCT efficiency.
+Chamber ME+12-20 experienced a 36.5395% change in segment efficiency.
+Chamber ME+32-31 experienced a 13.72% change in LCT efficiency.
+Chamber ME+32-31 experienced a 12.9718% change in segment efficiency.

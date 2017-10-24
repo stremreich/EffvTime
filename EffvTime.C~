@@ -1,0 +1,582 @@
+// Efficiency tracking per chamber over time
+// Stephen Trembath-Reichert
+
+#include "TH2.h"
+#include "stdio.h"
+#include "TGraph.h"
+#include "TGraphErrors.h"
+#include "TGraphAsymmErrors.h"
+#include "TH1F.h"
+#include "TTree.h"
+#include "TDatime.h"
+#include <vector>
+#include <string>
+#include <utility>
+#include <sstream>
+#include <fstream>
+#include <cmath>
+
+string Rings[] = {"ME-42", "ME-41",
+		  "ME-32", "ME-31",
+		  "ME-22", "ME-21",
+		  "ME-13", "ME-12",
+		  "ME-11B", "ME-11A",
+		  "ME+11A", "ME+11B",
+		  "ME+12", "ME+13",
+		  "ME+21", "ME+22",
+		  "ME+31", "ME+32",
+		  "ME+41", "ME+42"};
+
+const int PLOTROWS = 20;
+const int PLOTCOL1 = 18;
+const int PLOTCOL2 = 36; 
+
+const int TIMECONV = 788918400;
+
+void EffvTime(const char *LCTname, const char *SEGname, TDatime begintime, TDatime endtime, const bool print) {
+
+  //gROOT->ProcessLine(".L CMSStyle.C");
+  //gROOT->ProcessLine("CMSStyle()");
+  //gROOT->LoadMacro("CMSStyle.C");
+  CMSStyle();
+
+  gROOT->SetBatch(kTRUE);
+
+  ofstream deffout;
+  deffout.open("DEffvTime.txt");
+  
+  // Load the LCT and Segment efficiency histograms
+  TFile fLCT(LCTname);
+  TFile fSEG(SEGname);
+  
+  TH2F *histLCT = (TH2F*)fLCT.Get("LCTEff");
+  TH2F *histLCTuperr = (TH2F*)fLCT.Get("LCTEff_upErr");
+  TH2F *histLCTdownerr = (TH2F*)fLCT.Get("LCTEff_downErr");
+  TH2F *histSEG = (TH2F*)fLCT.Get("SEGEff");
+  TH2F *histSEGuperr = (TH2F*)fLCT.Get("SEGEff_upErr");
+  TH2F *histSEGdownerr = (TH2F*)fLCT.Get("SEGEff_downErr");
+
+  // If the root file with the EffvTime plots doesn't exist, create it.
+  // If the file exists then load it and add to the existing plots.
+
+  TFile fEvT;
+  if(!(fEvT.Open("EffvTime.root"))) {
+    cout << "File didn't exist." << endl;
+
+
+    TFile fout("EffvTime.root", "NEW");
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // make and resize the data vectors /////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    vector<double> Timeval, Timevalpluserr, Timevalminuserr;
+    vector< vector< vector<double> > > LCTdata, LCTdatapluserr, LCTdataminuserr,  
+      SEGdata, SEGdatapluserr, SEGdataminuserr;
+    
+    LCTdata.resize(PLOTROWS);
+    LCTdata.resize(PLOTROWS);
+    LCTdatapluserr.resize(PLOTROWS);
+    LCTdataminuserr.resize(PLOTROWS);
+    SEGdata.resize(PLOTROWS);
+    SEGdatapluserr.resize(PLOTROWS);
+    SEGdataminuserr.resize(PLOTROWS);
+
+    for(int i = 0; i < PLOTROWS; i++) {
+      if(i == 1 || i == 3 || i == 5 || i == 14 || i == 16 || i == 18) {
+	LCTdata[i].resize(PLOTCOL1);
+	LCTdatapluserr[i].resize(PLOTCOL1);
+	LCTdataminuserr[i].resize(PLOTCOL1);
+	SEGdata[i].resize(PLOTCOL1);
+	SEGdatapluserr[i].resize(PLOTCOL1);
+	SEGdataminuserr[i].resize(PLOTCOL1);
+      } else {
+	LCTdata[i].resize(PLOTCOL2);
+	LCTdatapluserr[i].resize(PLOTCOL2);
+	LCTdataminuserr[i].resize(PLOTCOL2);
+	SEGdata[i].resize(PLOTCOL2);
+	SEGdatapluserr[i].resize(PLOTCOL2);
+	SEGdataminuserr[i].resize(PLOTCOL2);
+      }
+    }
+    
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Fill in data /////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    double tempval;
+
+    for(int ybin = 1; ybin <= (histLCT->GetNbinsY()); ybin++) {
+      for(int xbin = 1; xbin <= (histLCT->GetNbinsX()); xbin++) {
+	if(!((ybin == 2 || ybin == 4 || ybin == 6 || ybin == 15 || ybin == 17 || ybin == 19) && (xbin > 18))) {
+	  tempval = histLCT->GetBinContent(xbin, ybin);
+	  LCTdata[ybin - 1][xbin - 1].push_back(tempval);
+	  tempval = histLCTuperr->GetBinContent(xbin, ybin);
+	  LCTdatapluserr[ybin - 1][xbin - 1].push_back(tempval);
+	  tempval = histLCTdownerr->GetBinContent(xbin, ybin);
+	  LCTdataminuserr[ybin - 1][xbin - 1].push_back(tempval);
+
+	  tempval = histSEG->GetBinContent(xbin, ybin);
+	  SEGdata[ybin - 1][xbin - 1].push_back(tempval);
+	  tempval = histSEGuperr->GetBinContent(xbin, ybin);
+	  SEGdatapluserr[ybin - 1][xbin - 1].push_back(tempval);
+	  tempval = histSEGdownerr->GetBinContent(xbin, ybin);
+	  SEGdataminuserr[ybin - 1][xbin - 1].push_back(tempval);
+	}
+      }
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Fill in time data ////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // Convert from UNIX time (since 1970) to weird ROOT time (since 1995)
+
+    int timeavg = (begintime.Convert() + endtime.Convert()) / 2;
+    int timepluserr = endtime.Convert() - timeavg;
+    int timeminuserr = timeavg - begintime.Convert();
+    
+    Timeval.push_back(timeavg - TIMECONV);
+    Timevalpluserr.push_back(timepluserr);
+    Timevalminuserr.push_back(timeminuserr); 
+
+    // Write to file 
+
+    fout.WriteObject(&LCTdata, "LCTdata");
+    fout.WriteObject(&LCTdatapluserr, "LCTdatapluserr");
+    fout.WriteObject(&LCTdataminuserr, "LCTdataminuserr");
+    fout.WriteObject(&SEGdata, "SEGdata");
+    fout.WriteObject(&SEGdatapluserr, "SEGdatapluserr");
+    fout.WriteObject(&SEGdataminuserr, "SEGdataminuserr");
+    fout.WriteObject(&Timeval, "Timeval");
+    fout.WriteObject(&Timevalpluserr, "Timevalpluserr");
+    fout.WriteObject(&Timevalminuserr, "Timevalminuserr");
+
+    if(print) {
+      /////////////////////////////////////////////////////////////////////////////////////////////////////////
+      // Graph all results ////////////////////////////////////////////////////////////////////////////////////
+      /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+      stringstream ss;
+      const char *printnameLCT[612];
+      const char *titlenameLCT[612];
+      const char *printnameSEG[612];
+      const char *titlenameSEG[612];
+      TGraphAsymmErrors *grLCT[612];
+      TGraphAsymmErrors *grSEG[612];
+      TCanvas *cLCT[612];
+      TCanvas *cSEG[612];
+      int num = 0;
+
+      double *x;
+      double *xeh;
+      double *xel;
+      double *y;
+      double *yeh;
+      double *yel;
+      int n;
+    
+      for(int ybin = 1; ybin <= (histLCT->GetNbinsY()); ybin++) {
+	for(int xbin = 1; xbin <= (histLCT->GetNbinsX()); xbin++) {
+	  if(!((ybin == 2 || ybin == 4 || ybin == 6 || ybin == 15 || ybin == 17 || ybin == 19) && (xbin > 18))) {
+	    if(((LCTdata)[ybin - 1][xbin - 1]).size() != 0) {
+	      //cout << Rings[ybin - 1] << "-" << xbin << endl;
+
+	      x = &((Timeval)[0]);
+
+	      xeh = &((Timevalpluserr)[0]);
+	      xel = &((Timevalminuserr)[0]);
+	    
+	      y = &((LCTdata)[ybin - 1][xbin - 1][0]);
+	    
+	      yeh = &((LCTdatapluserr)[ybin - 1][xbin - 1][0]);
+	      yel = &((LCTdataminuserr)[ybin - 1][xbin - 1][0]);
+
+	      n = ((LCTdata)[ybin - 1][xbin - 1]).size();
+
+	      grLCT[num] = new TGraphAsymmErrors(n, x, y, xel, xeh, yel, yeh);
+
+	      ss << Rings[ybin - 1] << "-" << xbin << " (LCT)";
+	      titlenameLCT[num] = (ss.str()).c_str();
+	      ss.str("");
+
+	      grLCT[num]->SetTitle(titlenameLCT[num]);
+	      grLCT[num]->SetMarkerStyle(21);
+	      grLCT[num]->GetXaxis()->SetTimeDisplay(1);
+	      grLCT[num]->GetXaxis()->SetTimeFormat("%d\/%m");
+	      grLCT[num]->GetXaxis()->SetTitle("Date (dd/mm)");
+	      grLCT[num]->GetYaxis()->SetTitle("Efficiency (%)");
+
+	      cLCT[num] = new TCanvas();
+	      grLCT[num]->Draw("ALP");
+
+	      ss << Rings[ybin - 1] << "-" << xbin << "_LCT.png";
+	      printnameLCT[num] = (ss.str()).c_str();
+	      ss.str("");
+
+	      cLCT[num]->SaveAs(printnameLCT[num]);
+
+	      ss.str("");
+	      ++num;
+	    } else {
+	      cout << Rings[ybin - 1] << "-" << xbin << " has no data." << endl;
+	      ++num;
+	    }
+	  }
+	}
+      }
+
+      num = 0;
+
+      for(int ybin = 1; ybin <= (histLCT->GetNbinsY()); ybin++) {
+	for(int xbin = 1; xbin <= (histLCT->GetNbinsX()); xbin++) {
+	  if(!((ybin == 2 || ybin == 4 || ybin == 6 || ybin == 15 || ybin == 17 || ybin == 19) && (xbin > 18))) {
+	    if(((SEGdata)[ybin - 1][xbin - 1]).size() != 0) {
+	      //cout << Rings[ybin - 1] << "-" << xbin << endl;
+
+	      x = &((Timeval)[0]);
+
+	      xeh = &((Timevalpluserr)[0]);
+	      xel = &((Timevalminuserr)[0]);
+
+	      n = ((SEGdata)[ybin - 1][xbin - 1]).size();
+
+	      y = &((SEGdata)[ybin - 1][xbin - 1][0]);
+	    
+	      yeh = &((SEGdatapluserr)[ybin - 1][xbin - 1][0]);
+	      yel = &((SEGdataminuserr)[ybin - 1][xbin - 1][0]);
+
+	      grSEG[num] = new TGraphAsymmErrors(n, x, y, xel, xeh, yel, yeh);
+	    
+	      ss << Rings[ybin - 1] << "-" << xbin << " (SEG)";
+	      titlenameSEG[num] = (ss.str()).c_str();
+	      ss.str("");
+
+	      grSEG[num]->SetTitle(titlenameSEG[num]);
+	      grSEG[num]->SetMarkerStyle(21);
+	      grSEG[num]->GetXaxis()->SetTimeDisplay(1);
+	      grSEG[num]->GetXaxis()->SetTimeFormat("%d\/%m");
+	      grSEG[num]->GetXaxis()->SetTitle("Date (dd/mm)");
+	      grSEG[num]->GetYaxis()->SetTitle("Efficiency (%)");
+	    
+	      cSEG[num] = new TCanvas();
+	      grSEG[num]->Draw("ALP");
+	    
+	      ss << Rings[ybin - 1] << "-" << xbin << "_SEG.png";
+	      printnameSEG[num] = (ss.str()).c_str();
+	      ss.str("");
+
+	      cSEG[num]->SaveAs(printnameSEG[num]);
+
+	      ss.str("");
+	      ++num;
+	    } else {
+	      cout << Rings[ybin - 1] << "-" << xbin << " has no data." << endl;
+	      ++num;
+	    }
+	  }
+	}
+      }
+    }
+    
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Print out DEffvTime.txt //////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    deffout << "Recording all chambers with a delta_eff > 10% \n" << endl;
+    
+    double deffLCT, deffSEG;
+    TDatime ttbegin, ttend;
+
+    for(int i = 0; i < ((LCTdata[0][0]).size() - 1); ++i) {
+      ttbegin = Timeval[i] + Timevalpluserr[i];
+      ttend = Timeval[i + 1] - Timevalminuserr[i + 1];
+      
+      deffout << "Time Period: " << ttbegin.GetDay() << "/" 
+    	      << ttbegin.GetMonth() << "/" << ttbegin.GetYear() 
+	      << " to " 
+	      << ttend.GetDay() << "/" << ttend.GetMonth() << "/" 
+	      << ttend.GetYear() << "." << endl << endl;
+
+      for(int ybin = 1; ybin <= (histLCT->GetNbinsY()); ybin++) {
+	for(int xbin = 1; xbin <= (histLCT->GetNbinsX()); xbin++) {
+	  if(!((ybin == 2 || ybin == 4 || ybin == 6 || ybin == 15 || ybin == 17 || ybin == 19) && (xbin > 18))) {
+    	    deffLCT = (LCTdata)[ybin - 1][xbin - 1][i + 1] - (LCTdata)[ybin - 1][xbin - 1][i];
+    	    deffSEG = (SEGdata)[ybin - 1][xbin - 1][i + 1] - (SEGdata)[ybin - 1][xbin - 1][i];
+    	    if(abs(deffLCT) > 10) {
+    	      deffout << "Chamber " << Rings[ybin - 1] << "-" << xbin << " experienced a " << deffLCT 
+    		      << "% change in LCT efficiency." << endl;
+    	    }
+    	    if(abs(deffSEG) > 10) {
+    	      deffout << "Chamber " << Rings[ybin - 1] << "-" << xbin << " experienced a " << deffSEG
+    		      << "% change in segment efficiency." << endl;
+    	    }
+	  }
+    	}
+      }
+    }
+      
+    
+
+    deffout.close();
+
+  } else {
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // If EffvTime.root exists //////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    fEvT.Close();
+
+    cout << "File exists." << endl;
+    
+    TFile *f = new TFile("EffvTime.root");
+
+    vector<double> *Timeval;
+    vector<double> *Timevalpluserr;
+    vector<double> *Timevalminuserr;
+    vector<vector<vector<double> > > *LCTdata;
+    vector<vector<vector<double> > > *LCTdatapluserr;
+    vector<vector<vector<double> > > *LCTdataminuserr;
+    vector<vector<vector<double> > > *SEGdata;
+    vector<vector<vector<double> > > *SEGdatapluserr;
+    vector<vector<vector<double> > > *SEGdataminuserr;
+
+    f->GetObject("Timeval", Timeval);
+    f->GetObject("Timevalpluserr", Timevalpluserr);
+    f->GetObject("Timevalminuserr", Timevalminuserr);
+    f->GetObject("LCTdata", LCTdata);
+    f->GetObject("LCTdatapluserr", LCTdatapluserr);
+    f->GetObject("LCTdataminuserr", LCTdataminuserr);
+    f->GetObject("SEGdata", SEGdata);
+    f->GetObject("SEGdatapluserr", SEGdatapluserr);
+    f->GetObject("SEGdataminuserr", SEGdataminuserr);
+
+    f->Close();
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Fill in new set of data //////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    double tempval;
+
+    for(int ybin = 1; ybin <= (histLCT->GetNbinsY()); ybin++) {
+      for(int xbin = 1; xbin <= (histLCT->GetNbinsX()); xbin++) {
+	if(!((ybin == 2 || ybin == 4 || ybin == 6 || ybin == 15 || ybin == 17 || ybin == 19) && (xbin > 18))) {
+	  tempval = histLCT->GetBinContent(xbin, ybin);
+	  ((*LCTdata)[ybin - 1][xbin - 1]).push_back(tempval);
+	  tempval = histLCTuperr->GetBinContent(xbin, ybin);
+	  ((*LCTdatapluserr)[ybin - 1][xbin - 1]).push_back(tempval);
+	  tempval = histLCTdownerr->GetBinContent(xbin, ybin);
+	  ((*LCTdataminuserr)[ybin - 1][xbin - 1]).push_back(tempval);
+
+	  tempval = histSEG->GetBinContent(xbin, ybin);
+	  ((*SEGdata)[ybin - 1][xbin - 1]).push_back(tempval);
+	  tempval = histSEGuperr->GetBinContent(xbin, ybin);
+	  ((*SEGdatapluserr)[ybin - 1][xbin - 1]).push_back(tempval);
+	  tempval = histSEGdownerr->GetBinContent(xbin, ybin);
+	  ((*SEGdataminuserr)[ybin - 1][xbin - 1]).push_back(tempval);
+	}
+      }
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Fill in time data ////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // Convert from UNIX time (since 1970) to weird ROOT time (since 1995)
+
+    int timeavg = (begintime.Convert() + endtime.Convert()) / 2;
+    int timepluserr = endtime.Convert() - timeavg;
+    int timeminuserr = timeavg - begintime.Convert();
+
+    (*Timeval).push_back(timeavg - TIMECONV);
+    (*Timevalpluserr).push_back(timepluserr);
+    (*Timevalminuserr).push_back(timeminuserr);
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Overwrite existing root file /////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    TFile *fwrite = new TFile("EffvTime.root", "RECREATE");
+
+    fwrite->WriteObject(LCTdata, "LCTdata");
+    fwrite->WriteObject(LCTdatapluserr, "LCTdatapluserr");
+    fwrite->WriteObject(LCTdataminuserr, "LCTdataminuserr");
+    fwrite->WriteObject(SEGdata, "SEGdata");
+    fwrite->WriteObject(SEGdatapluserr, "SEGdatapluserr");
+    fwrite->WriteObject(SEGdataminuserr, "SEGdataminuserr");
+    fwrite->WriteObject(Timeval, "Timeval");
+    fwrite->WriteObject(Timevalpluserr, "Timevalpluserr");
+    fwrite->WriteObject(Timevalminuserr, "Timevalminuserr");
+
+    fwrite->Close();
+
+    if(print) {
+      /////////////////////////////////////////////////////////////////////////////////////////////////////////
+      // Graph all results ////////////////////////////////////////////////////////////////////////////////////
+      /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+      stringstream ss;
+      const char *printnameLCT[612];
+      const char *titlenameLCT[612];
+      const char *printnameSEG[612];
+      const char *titlenameSEG[612];
+      TGraphAsymmErrors *grLCT[612];
+      TGraphAsymmErrors *grSEG[612];
+      TCanvas *cLCT[612];
+      TCanvas *cSEG[612];
+      int num = 0;
+
+      double *x;
+      double *xeh;
+      double *xel;
+      double *y;
+      double *yeh;
+      double *yel;
+      int n;
+    
+      for(int ybin = 1; ybin <= (histLCT->GetNbinsY()); ybin++) {
+	for(int xbin = 1; xbin <= (histLCT->GetNbinsX()); xbin++) {
+	  if(!((ybin == 2 || ybin == 4 || ybin == 6 || ybin == 15 || ybin == 17 || ybin == 19) && (xbin > 18))) {
+	    if(((*LCTdata)[ybin - 1][xbin - 1]).size() != 0) {
+	      //cout << Rings[ybin - 1] << "-" << xbin << endl;
+
+	      x = &((*Timeval)[0]);
+
+	      xeh = &((*Timevalpluserr)[0]);
+	      xel = &((*Timevalminuserr)[0]);
+	    
+	      y = &((*LCTdata)[ybin - 1][xbin - 1][0]);
+	    
+	      yeh = &((*LCTdatapluserr)[ybin - 1][xbin - 1][0]);
+	      yel = &((*LCTdataminuserr)[ybin - 1][xbin - 1][0]);
+
+	      n = ((*LCTdata)[ybin - 1][xbin - 1]).size();
+
+	      grLCT[num] = new TGraphAsymmErrors(n, x, y, xel, xeh, yel, yeh);
+
+	      ss << Rings[ybin - 1] << "-" << xbin << " (LCT)";
+	      titlenameLCT[num] = (ss.str()).c_str();
+	      ss.str("");
+
+	      grLCT[num]->SetTitle(titlenameLCT[num]);
+	      grLCT[num]->SetMarkerStyle(21);
+	      grLCT[num]->GetXaxis()->SetTimeDisplay(1);
+	      grLCT[num]->GetXaxis()->SetTimeFormat("%d\/%m");
+	      grLCT[num]->GetXaxis()->SetTitle("Date (dd/mm)");
+	      grLCT[num]->GetYaxis()->SetTitle("Efficiency (%)");
+
+	      cLCT[num] = new TCanvas();
+	      grLCT[num]->Draw("ALP");
+
+	      ss << Rings[ybin - 1] << "-" << xbin << "_LCT.png";
+	      printnameLCT[num] = (ss.str()).c_str();
+	      ss.str("");
+
+	      cLCT[num]->SaveAs(printnameLCT[num]);
+
+	      ss.str("");
+	      ++num;
+	    } else {
+	      cout << Rings[ybin - 1] << "-" << xbin << " has no data." << endl;
+	      ++num;
+	    }
+	  }
+	}
+      }
+
+      num = 0;
+
+      for(int ybin = 1; ybin <= (histLCT->GetNbinsY()); ybin++) {
+	for(int xbin = 1; xbin <= (histLCT->GetNbinsX()); xbin++) {
+	  if(!((ybin == 2 || ybin == 4 || ybin == 6 || ybin == 15 || ybin == 17 || ybin == 19) && (xbin > 18))) {
+	    if(((*SEGdata)[ybin - 1][xbin - 1]).size() != 0) {
+	      //cout << Rings[ybin - 1] << "-" << xbin << endl;
+
+	      x = &((*Timeval)[0]);
+
+	      xeh = &((*Timevalpluserr)[0]);
+	      xel = &((*Timevalminuserr)[0]);
+
+	      n = ((*SEGdata)[ybin - 1][xbin - 1]).size();
+
+	      y = &((*SEGdata)[ybin - 1][xbin - 1][0]);
+	    
+	      yeh = &((*SEGdatapluserr)[ybin - 1][xbin - 1][0]);
+	      yel = &((*SEGdataminuserr)[ybin - 1][xbin - 1][0]);
+
+	      grSEG[num] = new TGraphAsymmErrors(n, x, y, xel, xeh, yel, yeh);
+	    
+	      ss << Rings[ybin - 1] << "-" << xbin << " (SEG)";
+	      titlenameSEG[num] = (ss.str()).c_str();
+	      ss.str("");
+
+	      grSEG[num]->SetTitle(titlenameSEG[num]);
+	      grSEG[num]->SetMarkerStyle(21);
+	      grSEG[num]->GetXaxis()->SetTimeDisplay(1);
+	      grSEG[num]->GetXaxis()->SetTimeFormat("%d\/%m");
+	      grSEG[num]->GetXaxis()->SetTitle("Date (dd/mm)");
+	      grSEG[num]->GetYaxis()->SetTitle("Efficiency (%)");
+	    
+	      cSEG[num] = new TCanvas();
+	      grSEG[num]->Draw("ALP");
+	    
+	      ss << Rings[ybin - 1] << "-" << xbin << "_SEG.png";
+	      printnameSEG[num] = (ss.str()).c_str();
+	      ss.str("");
+
+	      cSEG[num]->SaveAs(printnameSEG[num]);
+
+	      ss.str("");
+	      ++num;
+	    } else {
+	      cout << Rings[ybin - 1] << "-" << xbin << " has no data." << endl;
+	      ++num;
+	    }
+	  }
+	}
+      }
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Print out DEffvTime.txt //////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    deffout << "Recording all chambers with a delta_eff > 10% \n" << endl;
+    
+    double deffLCT, deffSEG;
+    TDatime ttbegin, ttend;
+
+    for(int i = 0; i < (((*LCTdata)[0][0]).size() - 1); ++i) {
+      ttbegin = (*Timeval)[i] + (*Timevalpluserr)[i];
+      ttend = (*Timeval)[i + 1] - (*Timevalminuserr)[i + 1];
+      
+      deffout << "Time Period: " << ttbegin.GetDay() << "/" 
+    	      << ttbegin.GetMonth() << "/" << ttbegin.GetYear() 
+	      << " to " 
+	      << ttend.GetDay() << "/" << ttend.GetMonth() << "/" 
+	      << ttend.GetYear() << "." << endl << endl;
+
+      for(int ybin = 1; ybin <= (histLCT->GetNbinsY()); ybin++) {
+	for(int xbin = 1; xbin <= (histLCT->GetNbinsX()); xbin++) {
+	  if(!((ybin == 2 || ybin == 4 || ybin == 6 || ybin == 15 || ybin == 17 || ybin == 19) && (xbin > 18))) {
+    	    deffLCT = (*LCTdata)[ybin - 1][xbin - 1][i + 1] - (*LCTdata)[ybin - 1][xbin - 1][i];
+    	    deffSEG = (*SEGdata)[ybin - 1][xbin - 1][i + 1] - (*SEGdata)[ybin - 1][xbin - 1][i];
+    	    if(abs(deffLCT) > 10) {
+    	      deffout << "Chamber " << Rings[ybin - 1] << "-" << xbin << " experienced a " << deffLCT 
+    		      << "% change in LCT efficiency." << endl;
+    	    }
+    	    if(abs(deffSEG) > 10) {
+    	      deffout << "Chamber " << Rings[ybin - 1] << "-" << xbin << " experienced a " << deffSEG
+    		      << "% change in segment efficiency." << endl;
+    	    }
+	  }
+    	}
+      }
+    }
+      
+    
+
+    deffout.close();
+  }
+}
