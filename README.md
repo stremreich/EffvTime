@@ -10,7 +10,7 @@ Depending on your ROOT version, you may also need to load vvloader.C, since Effv
 
 ### Calling EffvTime()
 The EffvTime function has 5 parameters:
-- The file name for a root file containing a plot of LCT efficiencies and their uncertainties. This file is produced by running the TnP process.
+- The file name for a root file containing a plot of LCT efficiencies and their uncertainties. This file is produced by running the TnP process [here](https://github.com/stremreich/CSC_eff_9_2_3_patch2).
 - The file name for the root file with the segment efficiencies.
 - A TDatime object for the beginning of the data-taking period that you are plotting.
   - For example, if you are plotting data taken from Aug 9 - Sep 9, this would be the exact time and date that the first run on Aug 9 began.
