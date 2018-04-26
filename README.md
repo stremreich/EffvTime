@@ -3,7 +3,10 @@
 EffvTime.C is a ROOT macro for plotting per-chamber SEG/LCT efficiencies on a efficiency v time plot.
 
 ## Use (in ROOT's interactive shell)
+### Before calling
 Make sure to load the CMSStyle package before loading/calling EffvTime. This can be done in EffvTime by uncommenting the first 3 lines of the function or manually in ROOT. CMSStyle.C is included in this repository.
+
+Depending on your ROOT version, you may also need to load vvloader.C, since EffvTime stores the various efficiency data in a 3D std::vector object, which may not be automatically recognized by ROOT as writable to a .root file.
 
 ### Calling EffvTime()
 The EffvTime function has 5 parameters:
@@ -20,4 +23,9 @@ EffvTime functions additively, one "data point" at a time. So, if you want to pl
 
 NOTE: EffvTime will automatically open and add to the file EffvTime.root, which it produces when it is first called. There is no way to delete data points at present, so be very careful that any old EffvTime.root files are not in the working directory if you wish to start a new set of plots.
 
+### Other files/output
+EffvTime also outputs another file named DEffvTime.txt, which is intended to show chambers with a large efficiency change in between any two consecutive data points. For this to work, you must input all the data points in chronological order.
 
+[Bug] There is currently a bug with the years that are output to DEffvTime. The months and days appear to work.
+
+Also included in the repository is a macro (TeXouput.C) to output TeX frames (texout.txt) for displaying all of these plots.
